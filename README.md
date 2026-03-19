@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Terminal-4D4D4D?style=for-the-badge&logo=gnome-terminal&logoColor=white" alt="Terminal">
   <img src="https://img.shields.io/badge/Bubble%20Tea-FF69B4?style=for-the-badge" alt="Bubble Tea">
-  <img src="https://img.shields.io/github/license/ethanwritescode/algo-arena?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
 </p>
 
 <p align="center">
