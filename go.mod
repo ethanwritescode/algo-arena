@@ -1,4 +1,4 @@
-module github.com/ethanjames/algo-arena
+module github.com/ethanwritescode/algo-arena
 
 go 1.22
 

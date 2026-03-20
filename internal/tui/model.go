@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ethanjames/algo-arena/internal/algorithms/pathfinding"
-	"github.com/ethanjames/algo-arena/internal/algorithms/sorting"
+	"github.com/ethanwritescode/algo-arena/internal/algorithms/pathfinding"
+	"github.com/ethanwritescode/algo-arena/internal/algorithms/sorting"
 )
 
 // View states
@@ -403,7 +403,7 @@ func (m Model) viewMainMenu() string {
 
 	// Footer (only for larger terminals)
 	if m.height >= 25 {
-		footer := footerStyle.Render("\n  Made with 💜 using Bubble Tea • github.com/ethanjames/algo-arena")
+		footer := footerStyle.Render("\n  Made with 💜 using Bubble Tea • github.com/ethanwritescode/algo-arena")
 		b.WriteString(footer)
 	}
 
