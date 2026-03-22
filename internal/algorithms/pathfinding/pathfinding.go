@@ -136,15 +136,25 @@ func (g *Grid) generateRecursiveBacktrackingMaze() {
 		}
 	}
 
-	// Add some random passages to create multiple path options (makes it more interesting)
+	// Add some random passages to create multiple path options
 	extraPassages := (g.Width * g.Height) / 20
 	for i := 0; i < extraPassages; i++ {
-		row := rand.IntN(g.Height-2) + 1
-		col := rand.IntN(g.Width-2) + 1
+		row := rand.IntN(g.Height-4) + 2
+		col := rand.IntN(g.Width-4) + 2
 		cell := Cell{Row: row, Col: col}
 		if cell != g.Start && cell != g.End {
 			delete(g.Walls, cell)
 		}
+	}
+
+	// Ensure border walls are always solid
+	for col := 0; col < g.Width; col++ {
+		g.Walls[Cell{Row: 0, Col: col}] = true
+		g.Walls[Cell{Row: g.Height - 1, Col: col}] = true
+	}
+	for row := 0; row < g.Height; row++ {
+		g.Walls[Cell{Row: row, Col: 0}] = true
+		g.Walls[Cell{Row: row, Col: g.Width - 1}] = true
 	}
 }
 
@@ -213,39 +223,37 @@ func BFS(grid *Grid) *Algorithm {
 	})
 
 	found := false
+	stepCounter := 0
 	for len(queue) > 0 && !found {
-		// Process entire current level for cleaner visualization
-		levelSize := len(queue)
-		for i := 0; i < levelSize && !found; i++ {
-			current := queue[0]
-			queue = queue[1:]
+		current := queue[0]
+		queue = queue[1:]
 
-			if current == grid.End {
-				found = true
-				algo.Steps = append(algo.Steps, Step{
-					Grid:        grid,
-					Visited:     copyVisited(visited),
-					Current:     current,
-					Frontier:    copyCells(queue),
-					Description: "Found target!",
-				})
-				break
-			}
-
-			for _, neighbor := range grid.GetNeighbors(current) {
-				if !visited[neighbor] {
-					visited[neighbor] = true
-					parent[neighbor] = current
-					queue = append(queue, neighbor)
-				}
-			}
-		}
-
-		if !found && len(queue) > 0 {
+		if current == grid.End {
+			found = true
 			algo.Steps = append(algo.Steps, Step{
 				Grid:        grid,
 				Visited:     copyVisited(visited),
-				Current:     queue[0],
+				Current:     current,
+				Frontier:    copyCells(queue),
+				Description: "Found target!",
+			})
+			break
+		}
+
+		for _, neighbor := range grid.GetNeighbors(current) {
+			if !visited[neighbor] {
+				visited[neighbor] = true
+				parent[neighbor] = current
+				queue = append(queue, neighbor)
+			}
+		}
+
+		stepCounter++
+		if stepCounter%3 == 0 {
+			algo.Steps = append(algo.Steps, Step{
+				Grid:        grid,
+				Visited:     copyVisited(visited),
+				Current:     current,
 				Frontier:    copyCells(queue),
 				Description: fmt.Sprintf("Expanding wave — visited: %d, frontier: %d", len(visited), len(queue)),
 			})
@@ -396,12 +404,6 @@ func Dijkstra(grid *Grid) *Algorithm {
 	dist := make(map[Cell]float64)
 	parent := make(map[Cell]Cell)
 
-	// Initialize distances
-	for row := 0; row < grid.Height; row++ {
-		for col := 0; col < grid.Width; col++ {
-			dist[Cell{Row: row, Col: col}] = math.Inf(1)
-		}
-	}
 	dist[grid.Start] = 0
 
 	pq := &priorityQueue{}
@@ -441,11 +443,11 @@ func Dijkstra(grid *Grid) *Algorithm {
 			break
 		}
 
-		// Update neighbors
 		for _, neighbor := range grid.GetNeighbors(current) {
 			if !visited[neighbor] {
 				newDist := dist[current] + 1
-				if newDist < dist[neighbor] {
+				oldDist, seen := dist[neighbor]
+				if !seen || newDist < oldDist {
 					dist[neighbor] = newDist
 					parent[neighbor] = current
 					heap.Push(pq, &pqItem{cell: neighbor, priority: newDist})
@@ -501,17 +503,10 @@ func AStar(grid *Grid) *Algorithm {
 	}
 
 	visited := make(map[Cell]bool)
-	gScore := make(map[Cell]float64) // Cost from start to node
-	fScore := make(map[Cell]float64) // gScore + heuristic estimate to goal
+	gScore := make(map[Cell]float64)
+	fScore := make(map[Cell]float64)
 	parent := make(map[Cell]Cell)
 
-	// Initialize scores
-	for row := 0; row < grid.Height; row++ {
-		for col := 0; col < grid.Width; col++ {
-			gScore[Cell{Row: row, Col: col}] = math.Inf(1)
-			fScore[Cell{Row: row, Col: col}] = math.Inf(1)
-		}
-	}
 	gScore[grid.Start] = 0
 	fScore[grid.Start] = heuristic(grid.Start, grid.End)
 
@@ -554,18 +549,19 @@ func AStar(grid *Grid) *Algorithm {
 			break
 		}
 
-		// Expand neighbors
 		for _, neighbor := range grid.GetNeighbors(current) {
 			if visited[neighbor] {
 				continue
 			}
 
 			tentativeG := gScore[current] + 1
-			if tentativeG < gScore[neighbor] {
+			oldG, seen := gScore[neighbor]
+			if !seen || tentativeG < oldG {
 				parent[neighbor] = current
 				gScore[neighbor] = tentativeG
-				fScore[neighbor] = tentativeG + heuristic(neighbor, grid.End)
-				heap.Push(pq, &pqItem{cell: neighbor, priority: fScore[neighbor]})
+				f := tentativeG + heuristic(neighbor, grid.End)
+				fScore[neighbor] = f
+				heap.Push(pq, &pqItem{cell: neighbor, priority: f})
 			}
 		}
 
@@ -615,8 +611,8 @@ func reconstructPath(parent map[Cell]Cell, start, end Cell, found bool) []Cell {
 
 func getResultDescription(found bool, pathLen int, visitedCount int) string {
 	if found {
-		return fmt.Sprintf("Path found! Length: %d, visited: %d cells (%.0f%% of search space explored)",
-			pathLen, visitedCount, float64(visitedCount)/float64(pathLen)*100/5)
+		return fmt.Sprintf("Path found! Length: %d, cells visited: %d",
+			pathLen, visitedCount)
 	}
 	return fmt.Sprintf("No path exists! Explored %d cells", visitedCount)
 }

@@ -20,6 +20,7 @@ const (
 	viewPathfindingMenu
 	viewSortingVis
 	viewPathfindingVis
+	viewAbout
 )
 
 // Speed settings
@@ -145,13 +146,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
+		return m, tea.Quit
+	case "q":
 		if m.view == viewMenu {
 			return m, tea.Quit
 		}
-		m.view = viewMenu
-		m.menuCursor = 0
-		return m, nil
+		return m.handleBack()
 
 	case "up", "k":
 		if m.menuCursor > 0 {
@@ -191,6 +192,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.speed = speedFast
 		return m, nil
 
+	case "left", "h":
+		return m.handleStepBack()
+
+	case "right", "l":
+		return m.handleStepForward()
+
 	case "esc":
 		return m.handleBack()
 	}
@@ -220,7 +227,8 @@ func (m Model) handleSelect() (tea.Model, tea.Cmd) {
 		case 1: // Pathfinding
 			m.view = viewPathfindingMenu
 			m.menuCursor = 0
-		case 2: // About - stay on menu
+		case 2: // About
+			m.view = viewAbout
 			return m, nil
 		case 3: // Quit
 			return m, tea.Quit
@@ -336,13 +344,47 @@ func (m Model) handleReset() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleStepBack() (tea.Model, tea.Cmd) {
+	if !m.paused {
+		return m, nil
+	}
+	switch m.view {
+	case viewSortingVis:
+		if m.sortingStep > 0 {
+			m.sortingStep--
+		}
+	case viewPathfindingVis:
+		if m.pathfindingStep > 0 {
+			m.pathfindingStep--
+		}
+	}
+	return m, nil
+}
+
+func (m Model) handleStepForward() (tea.Model, tea.Cmd) {
+	if !m.paused {
+		return m, nil
+	}
+	switch m.view {
+	case viewSortingVis:
+		if m.sortingAlgo != nil && m.sortingStep < len(m.sortingAlgo.Steps)-1 {
+			m.sortingStep++
+		}
+	case viewPathfindingVis:
+		if m.pathfindingAlgo != nil && m.pathfindingStep < len(m.pathfindingAlgo.Steps)-1 {
+			m.pathfindingStep++
+		}
+	}
+	return m, nil
+}
+
 func (m Model) handleBack() (tea.Model, tea.Cmd) {
 	switch m.view {
 	case viewSortingVis:
 		m.view = viewSortingMenu
 	case viewPathfindingVis:
 		m.view = viewPathfindingMenu
-	case viewSortingMenu, viewPathfindingMenu:
+	case viewSortingMenu, viewPathfindingMenu, viewAbout:
 		m.view = viewMenu
 	}
 	m.menuCursor = 0
@@ -362,6 +404,8 @@ func (m Model) View() string {
 		return m.viewSortingVisualization()
 	case viewPathfindingVis:
 		return m.viewPathfindingVisualization()
+	case viewAbout:
+		return m.viewAbout()
 	}
 	return ""
 }
@@ -476,6 +520,40 @@ func (m Model) viewPathfindingMenu() string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
 }
 
+func (m Model) viewAbout() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("❓ ABOUT ALGO ARENA"))
+	b.WriteString("\n\n")
+
+	content := lipgloss.NewStyle().Foreground(normalText).Width(56)
+
+	b.WriteString(content.Render("Algo Arena is an interactive terminal visualizer for sorting and pathfinding algorithms. Watch algorithms come to life step by step."))
+	b.WriteString("\n\n")
+
+	b.WriteString(algoNameStyle.Render("Sorting Algorithms"))
+	b.WriteString("\n")
+	b.WriteString(content.Render("Bubble Sort, Selection Sort, Insertion Sort, Quick Sort, Merge Sort, and Heap Sort — with real-time comparisons and swap counts."))
+	b.WriteString("\n\n")
+
+	b.WriteString(algoNameStyle.Render("Pathfinding Algorithms"))
+	b.WriteString("\n")
+	b.WriteString(content.Render("BFS, DFS, Dijkstra, and A* — navigating through procedurally generated mazes with live frontier and visited cell tracking."))
+	b.WriteString("\n\n")
+
+	controls := controlStyle.Render(
+		keyStyle.Render("Esc") + " Back",
+	)
+	b.WriteString(controls)
+
+	if m.height >= 25 {
+		footer := footerStyle.Render("\n  Built with Bubble Tea + Lipgloss • github.com/ethanwritescode/algo-arena")
+		b.WriteString(footer)
+	}
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+}
+
 func (m Model) renderMenu(items []string) string {
 	var b strings.Builder
 
@@ -553,10 +631,10 @@ func (m Model) viewSortingVisualization() string {
 		b.WriteString("\n")
 	}
 
-	// Controls
 	controls := controlStyle.Render(
 		keyStyle.Render("1/2/3") + " Speed  " +
 			keyStyle.Render("p") + " Pause  " +
+			keyStyle.Render("←/→") + " Step  " +
 			keyStyle.Render("r") + " Reset  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -577,12 +655,26 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 		}
 	}
 
-	// Dynamic bar height based on terminal height
-	// Account for header, status, legend, controls, borders (~12 lines of chrome)
+	// Pre-compute state sets for O(1) lookups instead of linear scans
+	swapSet := make(map[int]bool, len(step.Swapping))
+	for _, idx := range step.Swapping {
+		swapSet[idx] = true
+	}
+	cmpSet := make(map[int]bool, len(step.Comparing))
+	for _, idx := range step.Comparing {
+		cmpSet[idx] = true
+	}
+	sortedSet := make(map[int]bool, len(step.Sorted))
+	for _, idx := range step.Sorted {
+		sortedSet[idx] = true
+	}
+
+	// Determine column width: 2 chars per column (consistent for alignment)
+	colWidth := 2
+
 	maxHeight := min(max(m.height-14, 6), 25)
 	var lines []string
 
-	// Build from top to bottom
 	for h := maxHeight; h > 0; h-- {
 		var line strings.Builder
 		for i, val := range step.Array {
@@ -593,37 +685,34 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 				char = "█"
 			}
 
-			// Determine style based on state
 			style := barStyle
-			if contains(step.Swapping, i) {
+			if swapSet[i] {
 				style = swappingBarStyle
-			} else if contains(step.Comparing, i) {
+			} else if cmpSet[i] {
 				style = comparingBarStyle
 			} else if step.Pivot == i {
 				style = pivotBarStyle
-			} else if contains(step.Sorted, i) {
+			} else if sortedSet[i] {
 				style = sortedBarStyle
 			}
 
 			line.WriteString(style.Render(char))
-			line.WriteString(" ")
+			if colWidth > 1 {
+				line.WriteString(" ")
+			}
 		}
 		lines = append(lines, line.String())
 	}
 
-	// Add values at bottom (skip for very small terminals)
 	if m.height >= 20 {
 		var valLine strings.Builder
 		for i, val := range step.Array {
 			style := barStyle
-			if contains(step.Sorted, i) {
+			if sortedSet[i] {
 				style = sortedBarStyle
 			}
-			if val < 10 {
-				valLine.WriteString(style.Render(fmt.Sprintf("%d ", val)))
-			} else {
-				valLine.WriteString(style.Render(fmt.Sprintf("%d", val)))
-			}
+			label := fmt.Sprintf("%-*d", colWidth, val)
+			valLine.WriteString(style.Render(label))
 		}
 		lines = append(lines, valLine.String())
 	}
@@ -701,10 +790,10 @@ func (m Model) viewPathfindingVisualization() string {
 		b.WriteString("\n")
 	}
 
-	// Controls
 	controls := controlStyle.Render(
 		keyStyle.Render("1/2/3") + " Speed  " +
 			keyStyle.Render("p") + " Pause  " +
+			keyStyle.Render("←/→") + " Step  " +
 			keyStyle.Render("r") + " New Maze  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -717,10 +806,14 @@ func (m Model) renderPathfindingGrid(step pathfinding.Step) string {
 	grid := step.Grid
 	var lines []string
 
-	// Build a set of frontier cells for faster lookup
-	frontierSet := make(map[pathfinding.Cell]bool)
+	frontierSet := make(map[pathfinding.Cell]bool, len(step.Frontier))
 	for _, c := range step.Frontier {
 		frontierSet[c] = true
+	}
+
+	pathSet := make(map[pathfinding.Cell]bool, len(step.Path))
+	for _, c := range step.Path {
+		pathSet[c] = true
 	}
 
 	for row := 0; row < grid.Height; row++ {
@@ -739,7 +832,7 @@ func (m Model) renderPathfindingGrid(step pathfinding.Step) string {
 			} else if cell == grid.End {
 				char = "E"
 				style = endStyle
-			} else if containsCell(step.Path, cell) {
+			} else if pathSet[cell] {
 				char = "●"
 				style = pathStyle
 			} else if cell == step.Current {
@@ -775,27 +868,20 @@ func (m Model) renderPathfindingLegend() string {
 }
 
 func (m Model) getPauseStatus() string {
+	isFinished := false
+	switch m.view {
+	case viewSortingVis:
+		isFinished = m.sortingAlgo != nil && m.sortingStep >= len(m.sortingAlgo.Steps)-1
+	case viewPathfindingVis:
+		isFinished = m.pathfindingAlgo != nil && m.pathfindingStep >= len(m.pathfindingAlgo.Steps)-1
+	}
+
+	if isFinished {
+		return lipgloss.NewStyle().Foreground(neonCyan).Bold(true).Render("✓ Complete")
+	}
 	if m.paused {
 		return lipgloss.NewStyle().Foreground(neonOrange).Bold(true).Render("⏸ PAUSED")
 	}
 	return lipgloss.NewStyle().Foreground(neonGreen).Render("▶ Running")
 }
 
-// Helper functions
-func contains(slice []int, val int) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-func containsCell(slice []pathfinding.Cell, cell pathfinding.Cell) bool {
-	for _, c := range slice {
-		if c == cell {
-			return true
-		}
-	}
-	return false
-}

@@ -108,10 +108,11 @@ func BubbleSort(arr []int) *Algorithm {
 		}
 		sorted = append([]int{n - 1 - i}, sorted...)
 
-		// Early termination optimization
 		if !swapped {
-			for k := 0; k < n-i-1; k++ {
-				sorted = append([]int{k}, sorted...)
+			for k := 0; k < n-1-i; k++ {
+				if !containsInt(sorted, k) {
+					sorted = append(sorted, k)
+				}
 			}
 			break
 		}
