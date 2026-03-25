@@ -294,8 +294,10 @@ func DFS(grid *Grid) *Algorithm {
 	}
 
 	visited := make(map[Cell]bool)
+	onStack := make(map[Cell]bool)
 	parent := make(map[Cell]Cell)
 	stack := []Cell{grid.Start}
+	onStack[grid.Start] = true
 
 	algo.Steps = append(algo.Steps, Step{
 		Grid:        grid,
@@ -310,6 +312,7 @@ func DFS(grid *Grid) *Algorithm {
 	for len(stack) > 0 && !found {
 		current := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
+		delete(onStack, current)
 
 		if visited[current] {
 			continue
@@ -329,16 +332,18 @@ func DFS(grid *Grid) *Algorithm {
 			break
 		}
 
-		// Add unvisited neighbors to stack (reverse order for consistent direction preference)
+		// Add neighbors not yet visited and not already queued (avoids duplicate stack entries).
 		neighbors := grid.GetNeighbors(current)
 		addedAny := false
 		for i := len(neighbors) - 1; i >= 0; i-- {
 			neighbor := neighbors[i]
-			if !visited[neighbor] {
-				parent[neighbor] = current
-				stack = append(stack, neighbor)
-				addedAny = true
+			if visited[neighbor] || onStack[neighbor] {
+				continue
 			}
+			onStack[neighbor] = true
+			parent[neighbor] = current
+			stack = append(stack, neighbor)
+			addedAny = true
 		}
 
 		// Record step periodically or at interesting points
@@ -476,7 +481,7 @@ func Dijkstra(grid *Grid) *Algorithm {
 				Visited:     copyVisited(visited),
 				Current:     current,
 				Frontier:    getFrontierCells(pq),
-				Description: fmt.Sprintf("Processing dist=%.0f — visited: %d, queue: %d", currentDist, len(visited), pq.Len()),
+				Description: fmt.Sprintf("Processing dist=%.0f — visited: %d, open: %d", currentDist, len(visited), pq.Len()),
 			})
 		}
 	}
@@ -511,7 +516,7 @@ func getFrontierCells(pq *priorityQueue) []Cell {
 func AStar(grid *Grid) *Algorithm {
 	algo := &Algorithm{
 		Name:        "A* Search Algorithm",
-		Description: "Uses heuristic to guide search toward goal — optimal and typically much faster than Dijkstra",
+		Description: "Uses heuristic toward the goal — optimal paths on uniform-cost grids like this maze, often with fewer expansions than Dijkstra",
 		TimeComplex: "O(E log V)",
 		Steps:       []Step{},
 	}

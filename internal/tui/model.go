@@ -389,8 +389,8 @@ func (m Model) handleBack() (tea.Model, tea.Cmd) {
 		m.view = viewPathfindingMenu
 	case viewSortingMenu, viewPathfindingMenu, viewAbout:
 		m.view = viewMenu
+		m.menuCursor = 0
 	}
-	m.menuCursor = 0
 	return m, nil
 }
 
@@ -606,6 +606,10 @@ func (m Model) viewSortingVisualization() string {
 	b.WriteString("\n")
 
 	// Status with stats
+	moveLabel := m.sortingAlgo.MoveStatLabel
+	if moveLabel == "" {
+		moveLabel = "Swp"
+	}
 	progress := fmt.Sprintf("Step %d/%d", m.sortingStep+1, len(m.sortingAlgo.Steps))
 	statsLine := lipgloss.JoinHorizontal(lipgloss.Top,
 		statusStyle.Render(progress),
@@ -614,7 +618,7 @@ func (m Model) viewSortingVisualization() string {
 		"  ",
 		lipgloss.NewStyle().Foreground(neonCyan).Render(fmt.Sprintf("Cmp: %d", step.Comparisons)),
 		"  ",
-		lipgloss.NewStyle().Foreground(neonPink).Render(fmt.Sprintf("Swp: %d", step.Swaps)),
+		lipgloss.NewStyle().Foreground(neonPink).Render(fmt.Sprintf("%s: %d", moveLabel, step.Swaps)),
 		"  ",
 		m.getPauseStatus(),
 	)

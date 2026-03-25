@@ -37,3 +37,44 @@ func TestAlgorithmsProduceSortedFinalArray(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateRandomArrayUniqueHeights(t *testing.T) {
+	for _, size := range []int{2, 15, 50} {
+		arr := GenerateRandomArray(size)
+		if len(arr) != size {
+			t.Fatalf("size %d: got len %d", size, len(arr))
+		}
+		seen := make(map[int]struct{}, size)
+		for _, v := range arr {
+			if v < 1 || v > 50 {
+				t.Fatalf("size %d: value %d out of [1,50]", size, v)
+			}
+			if _, dup := seen[v]; dup {
+				t.Fatalf("size %d: duplicate height %d in %v", size, v, arr)
+			}
+			seen[v] = struct{}{}
+		}
+	}
+}
+
+func TestAlgorithmsSetMoveStatLabels(t *testing.T) {
+	arr := []int{3, 1, 2}
+	algorithms := map[string]*Algorithm{
+		"Bubble":    BubbleSort(slices.Clone(arr)),
+		"Selection": SelectionSort(slices.Clone(arr)),
+		"Insertion": InsertionSort(slices.Clone(arr)),
+		"Shell":     ShellSort(slices.Clone(arr)),
+		"Quick":     QuickSort(slices.Clone(arr)),
+		"Merge":     MergeSort(slices.Clone(arr)),
+		"Heap":      HeapSort(slices.Clone(arr)),
+	}
+	want := map[string]string{
+		"Bubble": "Swp", "Selection": "Swp", "Insertion": "Shf",
+		"Shell": "Swp", "Quick": "Swp", "Merge": "Wrt", "Heap": "Swp",
+	}
+	for name, algo := range algorithms {
+		if algo.MoveStatLabel != want[name] {
+			t.Fatalf("%s: MoveStatLabel %q, want %q", name, algo.MoveStatLabel, want[name])
+		}
+	}
+}

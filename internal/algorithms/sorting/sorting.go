@@ -23,26 +23,31 @@ type Algorithm struct {
 	Description  string
 	TimeComplex  string
 	SpaceComplex string
-	Steps        []Step
+	// MoveStatLabel is a short HUD label for Step.Swaps (comparisons vs swaps/shifts/writes).
+	MoveStatLabel string
+	Steps         []Step
 }
 
-// GenerateRandomArray creates a shuffled array with unique values for clearer visualization
+// GenerateRandomArray creates a shuffled array with unique bar heights in [1, maxBar].
 func GenerateRandomArray(size int) []int {
-	// Create array with unique, evenly distributed values
-	arr := make([]int, size)
-	maxVal := size
-	for i := range arr {
-		arr[i] = i + 1
+	if size <= 0 {
+		return nil
 	}
-	// Shuffle using Fisher-Yates
+	const maxBar = 50
+	arr := make([]int, size)
+	if size == 1 {
+		arr[0] = maxBar / 2
+		if arr[0] < 1 {
+			arr[0] = 1
+		}
+		return arr
+	}
+	for i := range arr {
+		arr[i] = 1 + (i * (maxBar - 1) / (size - 1))
+	}
 	for i := len(arr) - 1; i > 0; i-- {
 		j := rand.IntN(i + 1)
 		arr[i], arr[j] = arr[j], arr[i]
-	}
-	// Scale values to fill height better
-	scale := float64(50) / float64(maxVal)
-	for i := range arr {
-		arr[i] = int(float64(arr[i])*scale) + 1
 	}
 	return arr
 }
@@ -57,11 +62,12 @@ func copyArray(arr []int) []int {
 // BubbleSort generates steps for bubble sort visualization
 func BubbleSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Bubble Sort",
-		Description:  "Repeatedly swaps adjacent elements if they are in wrong order",
-		TimeComplex:  "O(n²)",
-		SpaceComplex: "O(1)",
-		Steps:        []Step{},
+		Name:          "Bubble Sort",
+		Description:   "Repeatedly swaps adjacent elements if they are in wrong order",
+		TimeComplex:   "O(n²)",
+		SpaceComplex:  "O(1)",
+		MoveStatLabel: "Swp",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -138,11 +144,12 @@ func BubbleSort(arr []int) *Algorithm {
 // SelectionSort generates steps for selection sort visualization
 func SelectionSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Selection Sort",
-		Description:  "Finds minimum element and places it at the beginning",
-		TimeComplex:  "O(n²)",
-		SpaceComplex: "O(1)",
-		Steps:        []Step{},
+		Name:          "Selection Sort",
+		Description:   "Finds minimum element and places it at the beginning",
+		TimeComplex:   "O(n²)",
+		SpaceComplex:  "O(1)",
+		MoveStatLabel: "Swp",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -227,11 +234,12 @@ func SelectionSort(arr []int) *Algorithm {
 // InsertionSort generates steps for insertion sort visualization
 func InsertionSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Insertion Sort",
-		Description:  "Builds sorted array one element at a time by inserting each element into its correct position",
-		TimeComplex:  "O(n²)",
-		SpaceComplex: "O(1)",
-		Steps:        []Step{},
+		Name:          "Insertion Sort",
+		Description:   "Builds sorted array one element at a time by inserting each element into its correct position",
+		TimeComplex:   "O(n²)",
+		SpaceComplex:  "O(1)",
+		MoveStatLabel: "Shf",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -338,11 +346,12 @@ func InsertionSort(arr []int) *Algorithm {
 // QuickSort generates steps for quicksort visualization
 func QuickSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Quick Sort",
-		Description:  "Divide and conquer: partition around pivot, recursively sort subarrays",
-		TimeComplex:  "O(n log n) avg",
-		SpaceComplex: "O(log n)",
-		Steps:        []Step{},
+		Name:          "Quick Sort",
+		Description:   "Divide and conquer: partition around pivot, recursively sort subarrays (worst O(n²))",
+		TimeComplex:   "O(n log n) avg",
+		SpaceComplex:  "O(log n)",
+		MoveStatLabel: "Swp",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -390,11 +399,12 @@ func QuickSort(arr []int) *Algorithm {
 // ShellSort generates steps for Shell sort visualization (Sedgewick / Knuth gap sequence).
 func ShellSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Shell Sort",
-		Description:  "Insertion sort on interleaved subsequences with shrinking gaps — much faster than plain insertion on larger inputs",
-		TimeComplex:  "O(n^1.3) typical",
-		SpaceComplex: "O(1)",
-		Steps:        []Step{},
+		Name:          "Shell Sort",
+		Description:   "Insertion sort on interleaved subsequences with shrinking gaps — much faster than plain insertion on larger inputs",
+		TimeComplex:   "O(n^1.3) typical",
+		SpaceComplex:  "O(1)",
+		MoveStatLabel: "Swp",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -562,11 +572,12 @@ func cmpSymbol(less bool) string {
 // MergeSort generates steps for merge sort visualization
 func MergeSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Merge Sort",
-		Description:  "Divide array in half recursively, then merge sorted halves back together",
-		TimeComplex:  "O(n log n)",
-		SpaceComplex: "O(n)",
-		Steps:        []Step{},
+		Name:          "Merge Sort",
+		Description:   "Divide array in half recursively, then merge sorted halves back together",
+		TimeComplex:   "O(n log n)",
+		SpaceComplex:  "O(n)",
+		MoveStatLabel: "Wrt",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
@@ -701,11 +712,12 @@ func mergeWithStats(data []int, left, mid, right int, algo *Algorithm, stats *so
 // HeapSort generates steps for heap sort visualization
 func HeapSort(arr []int) *Algorithm {
 	algo := &Algorithm{
-		Name:         "Heap Sort",
-		Description:  "Build max-heap, then repeatedly extract maximum to end of array",
-		TimeComplex:  "O(n log n)",
-		SpaceComplex: "O(1)",
-		Steps:        []Step{},
+		Name:          "Heap Sort",
+		Description:   "Build max-heap, then repeatedly extract maximum to end of array",
+		TimeComplex:   "O(n log n)",
+		SpaceComplex:  "O(1)",
+		MoveStatLabel: "Swp",
+		Steps:         []Step{},
 	}
 
 	data := copyArray(arr)
