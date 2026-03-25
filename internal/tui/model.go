@@ -11,6 +11,24 @@ import (
 	"github.com/ethanwritescode/algo-arena/internal/algorithms/sorting"
 )
 
+const minTermWidth, minTermHeight = 20, 8
+
+func clampWindowSize(w, h int) (int, int) {
+	if w <= 0 {
+		w = 80
+	}
+	if h <= 0 {
+		h = 24
+	}
+	if w < minTermWidth {
+		w = minTermWidth
+	}
+	if h < minTermHeight {
+		h = minTermHeight
+	}
+	return w, h
+}
+
 // View states
 type viewState int
 
@@ -131,8 +149,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width, m.height = clampWindowSize(msg.Width, msg.Height)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -204,6 +221,126 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m Model) place(content string) string {
+	w, h := clampWindowSize(m.width, m.height)
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, content)
+}
+
+// menuWidth caps the menu box for path labels; keeps margins on small terminals.
+func (m Model) menuWidth() int {
+	return min(max(m.width-10, 32), 58)
+}
+
+func (m Model) menuBox() lipgloss.Style {
+	return menuStyle.Width(m.menuWidth())
+}
+
+// textWrapWidth is used for body copy and algorithm descriptions.
+func (m Model) textWrapWidth() int {
+	return min(max(m.width-12, 22), 64)
+}
+
+func (m Model) narrowStats() bool {
+	return m.width < 92
+}
+
+func (m Model) veryNarrowControls() bool {
+	return m.width < 58
+}
+
+func (m Model) renderSortingStats(step sorting.Step, moveLabel, progress string) string {
+	line1 := lipgloss.JoinHorizontal(lipgloss.Top,
+		statusStyle.Render(progress),
+		"  ",
+		speedStyle.Render(m.speed.String()),
+		"  ",
+		m.getPauseStatus(),
+	)
+	line2 := lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Foreground(neonCyan).Render(fmt.Sprintf("Cmp: %d", step.Comparisons)),
+		"  ",
+		lipgloss.NewStyle().Foreground(neonPink).Render(fmt.Sprintf("%s: %d", moveLabel, step.Swaps)),
+	)
+	if m.narrowStats() {
+		return lipgloss.JoinVertical(lipgloss.Left, line1, line2)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, line1, "  ", line2)
+}
+
+func (m Model) renderPathStats(progress string, visitedCount, frontierCount int) string {
+	line1 := lipgloss.JoinHorizontal(lipgloss.Top,
+		statusStyle.Render(progress),
+		"  ",
+		speedStyle.Render(m.speed.String()),
+		"  ",
+		m.getPauseStatus(),
+	)
+	line2 := lipgloss.JoinHorizontal(lipgloss.Top,
+		lipgloss.NewStyle().Foreground(neonPurple).Render(fmt.Sprintf("Visited: %d", visitedCount)),
+		"  ",
+		lipgloss.NewStyle().Foreground(neonOrange).Render(fmt.Sprintf("Frontier: %d", frontierCount)),
+	)
+	if m.narrowStats() {
+		return lipgloss.JoinVertical(lipgloss.Left, line1, line2)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, line1, "  ", line2)
+}
+
+func (m Model) sortingControls() string {
+	if m.veryNarrowControls() {
+		row1 := controlStyle.Render(
+			keyStyle.Render("1/2/3") + " Speed  " +
+				keyStyle.Render("p") + " Pause  " +
+				keyStyle.Render("h/l") + " Step")
+		row2 := controlStyle.Render(
+			keyStyle.Render("r") + " Reset  " +
+				keyStyle.Render("Esc") + " Back")
+		return lipgloss.JoinVertical(lipgloss.Left, row1, row2)
+	}
+	return controlStyle.Render(
+		keyStyle.Render("1/2/3") + " Speed  " +
+			keyStyle.Render("p") + " Pause  " +
+			keyStyle.Render("h/l") + " Step  " +
+			keyStyle.Render("r") + " Reset  " +
+			keyStyle.Render("Esc") + " Back",
+	)
+}
+
+func (m Model) pathfindingControls() string {
+	if m.veryNarrowControls() {
+		row1 := controlStyle.Render(
+			keyStyle.Render("1/2/3") + " Speed  " +
+				keyStyle.Render("p") + " Pause  " +
+				keyStyle.Render("h/l") + " Step")
+		row2 := controlStyle.Render(
+			keyStyle.Render("r") + " New Maze  " +
+				keyStyle.Render("Esc") + " Back")
+		return lipgloss.JoinVertical(lipgloss.Left, row1, row2)
+	}
+	return controlStyle.Render(
+		keyStyle.Render("1/2/3") + " Speed  " +
+			keyStyle.Render("p") + " Pause  " +
+			keyStyle.Render("h/l") + " Step  " +
+			keyStyle.Render("r") + " New Maze  " +
+			keyStyle.Render("Esc") + " Back",
+	)
+}
+
+func (m Model) panelForContent(content string) string {
+	maxW := m.width - 2
+	if maxW < 12 {
+		maxW = 12
+	}
+	contentW := 0
+	for _, line := range strings.Split(content, "\n") {
+		if w := lipgloss.Width(line); w > contentW {
+			contentW = w
+		}
+	}
+	panelW := min(maxW, max(contentW+2, 12))
+	return compactPanelStyle.Width(panelW).Render(content)
 }
 
 func (m Model) getMaxMenuItems() int {
@@ -287,8 +424,12 @@ func (m Model) startPathfindingVisualization() (tea.Model, tea.Cmd) {
 	// Adjust grid size based on terminal dimensions
 	// Account for UI chrome (header, status, legend, controls, borders)
 	// Use odd dimensions for proper maze generation
+	chrome := 15
+	if m.narrowStats() {
+		chrome = 17
+	}
 	gridWidth := min(max((m.width-10)/2, 15), 41)
-	gridHeight := min(max(m.height-15, 9), 21)
+	gridHeight := min(max(m.height-chrome, 9), 21)
 	// Ensure odd dimensions for maze algorithm
 	if gridWidth%2 == 0 {
 		gridWidth--
@@ -416,8 +557,8 @@ func (m Model) View() string {
 func (m Model) viewMainMenu() string {
 	var b strings.Builder
 
-	// Use small logo for smaller terminals
-	if m.height < 30 {
+	useSmallLogo := m.height < 30 || m.width < 78
+	if useSmallLogo {
 		b.WriteString(logoStyle.Render(smallLogo))
 	} else {
 		b.WriteString(logoStyle.Render(logo))
@@ -429,7 +570,8 @@ func (m Model) viewMainMenu() string {
 		subtitle := lipgloss.NewStyle().
 			Foreground(dimText).
 			Italic(true).
-			Render("  Watch algorithms come to life in your terminal")
+			Width(m.textWrapWidth()).
+			Render("Watch algorithms come to life in your terminal")
 		b.WriteString(subtitle)
 		b.WriteString("\n")
 	}
@@ -437,24 +579,38 @@ func (m Model) viewMainMenu() string {
 
 	// Menu
 	menuContent := m.renderMenu(mainMenuItems)
-	b.WriteString(menuStyle.Render(menuContent))
+	b.WriteString(m.menuBox().Render(menuContent))
 	b.WriteString("\n")
 
-	// Controls
-	controls := controlStyle.Render(
-		keyStyle.Render("Up/Dn") + " Navigate  " +
-			keyStyle.Render("Enter") + " Select  " +
-			keyStyle.Render("q") + " Quit",
-	)
+	controls := m.mainMenuControls()
 	b.WriteString(controls)
 
 	// Footer (only for larger terminals)
 	if m.height >= 25 {
-		footer := footerStyle.Render("\n  Bubble Tea + Lipgloss · github.com/ethanwritescode/algo-arena")
+		footer := footerStyle.Width(m.textWrapWidth() + 8).Render(
+			"\n  Bubble Tea + Lipgloss · github.com/ethanwritescode/algo-arena")
 		b.WriteString(footer)
 	}
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	return m.place(b.String())
+}
+
+func (m Model) mainMenuControls() string {
+	if m.veryNarrowControls() {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			controlStyle.Render(
+				keyStyle.Render("Up/Dn")+" Navigate  "+
+					keyStyle.Render("j/k")),
+			controlStyle.Render(
+				keyStyle.Render("Enter")+" Select  "+
+					keyStyle.Render("q")+" Quit"),
+		)
+	}
+	return controlStyle.Render(
+		keyStyle.Render("Up/Dn") + " Navigate  " +
+			keyStyle.Render("Enter") + " Select  " +
+			keyStyle.Render("q") + " Quit",
+	)
 }
 
 func (m Model) viewSortingMenu() string {
@@ -467,7 +623,7 @@ func (m Model) viewSortingMenu() string {
 	if m.height >= 25 {
 		desc := lipgloss.NewStyle().
 			Foreground(dimText).
-			Width(50).
+			Width(m.textWrapWidth()).
 			Render("Visualize how different sorting algorithms organize data. Watch comparisons, swaps, and see the array transform in real-time.")
 		b.WriteString(desc)
 		b.WriteString("\n")
@@ -476,18 +632,11 @@ func (m Model) viewSortingMenu() string {
 
 	// Menu
 	menuContent := m.renderMenu(sortingMenuItems)
-	b.WriteString(menuStyle.Render(menuContent))
+	b.WriteString(m.menuBox().Render(menuContent))
 	b.WriteString("\n")
 
-	// Controls
-	controls := controlStyle.Render(
-		keyStyle.Render("Up/Dn") + " Navigate  " +
-			keyStyle.Render("Enter") + " Select  " +
-			keyStyle.Render("Esc") + " Back",
-	)
-	b.WriteString(controls)
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	b.WriteString(m.submenuControls())
+	return m.place(b.String())
 }
 
 func (m Model) viewPathfindingMenu() string {
@@ -500,7 +649,7 @@ func (m Model) viewPathfindingMenu() string {
 	if m.height >= 25 {
 		desc := lipgloss.NewStyle().
 			Foreground(dimText).
-			Width(50).
+			Width(m.textWrapWidth()).
 			Render("Watch pathfinding algorithms navigate through a maze. See how different strategies explore and find the optimal path.")
 		b.WriteString(desc)
 		b.WriteString("\n")
@@ -509,18 +658,25 @@ func (m Model) viewPathfindingMenu() string {
 
 	// Menu
 	menuContent := m.renderMenu(pathfindingMenuItems)
-	b.WriteString(menuStyle.Render(menuContent))
+	b.WriteString(m.menuBox().Render(menuContent))
 	b.WriteString("\n")
 
-	// Controls
-	controls := controlStyle.Render(
+	b.WriteString(m.submenuControls())
+	return m.place(b.String())
+}
+
+func (m Model) submenuControls() string {
+	if m.veryNarrowControls() {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			controlStyle.Render(keyStyle.Render("Up/Dn")+" Navigate  "+keyStyle.Render("j/k")),
+			controlStyle.Render(keyStyle.Render("Enter")+" Select  "+keyStyle.Render("Esc")+" Back"),
+		)
+	}
+	return controlStyle.Render(
 		keyStyle.Render("Up/Dn") + " Navigate  " +
 			keyStyle.Render("Enter") + " Select  " +
 			keyStyle.Render("Esc") + " Back",
 	)
-	b.WriteString(controls)
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
 }
 
 func (m Model) viewAbout() string {
@@ -529,7 +685,8 @@ func (m Model) viewAbout() string {
 	b.WriteString(titleStyle.Render("ABOUT ALGO ARENA"))
 	b.WriteString("\n\n")
 
-	content := lipgloss.NewStyle().Foreground(normalText).Width(56)
+	w := m.textWrapWidth()
+	content := lipgloss.NewStyle().Foreground(normalText).Width(w)
 
 	b.WriteString(content.Render("Algo Arena is an interactive terminal visualizer for sorting and pathfinding algorithms. Watch algorithms come to life step by step."))
 	b.WriteString("\n\n")
@@ -544,17 +701,15 @@ func (m Model) viewAbout() string {
 	b.WriteString(content.Render("BFS, DFS, Dijkstra, and A* — navigating through procedurally generated mazes with live frontier and visited cell tracking."))
 	b.WriteString("\n\n")
 
-	controls := controlStyle.Render(
-		keyStyle.Render("Esc") + " Back",
-	)
-	b.WriteString(controls)
+	b.WriteString(controlStyle.Render(keyStyle.Render("Esc") + " Back"))
 
 	if m.height >= 25 {
-		footer := footerStyle.Render("\n  Built with Bubble Tea + Lipgloss • github.com/ethanwritescode/algo-arena")
+		footer := footerStyle.Width(w + 8).Render(
+			"\n  Built with Bubble Tea + Lipgloss · github.com/ethanwritescode/algo-arena")
 		b.WriteString(footer)
 	}
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	return m.place(b.String())
 }
 
 func (m Model) renderMenu(items []string) string {
@@ -576,7 +731,7 @@ func (m Model) renderMenu(items []string) string {
 
 func (m Model) viewSortingVisualization() string {
 	if m.sortingAlgo == nil || len(m.sortingAlgo.Steps) == 0 {
-		return "Loading..."
+		return m.place(lipgloss.NewStyle().Foreground(dimText).Render("Loading..."))
 	}
 
 	step := m.sortingAlgo.Steps[m.sortingStep]
@@ -584,70 +739,60 @@ func (m Model) viewSortingVisualization() string {
 
 	// Header (compact for small terminals)
 	if m.height >= 25 {
-		header := lipgloss.JoinHorizontal(lipgloss.Top,
-			algoNameStyle.Render(m.sortingAlgo.Name),
-			"  ",
-			complexityStyle.Render("Time: "+m.sortingAlgo.TimeComplex),
-			"  ",
-			complexityStyle.Render("Space: "+m.sortingAlgo.SpaceComplex),
-		)
-		b.WriteString(header)
+		if m.width < 90 {
+			b.WriteString(algoNameStyle.Render(m.sortingAlgo.Name))
+			b.WriteString("\n")
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				complexityStyle.Render("Time: "+m.sortingAlgo.TimeComplex),
+				"  ",
+				complexityStyle.Render("Space: "+m.sortingAlgo.SpaceComplex),
+			))
+		} else {
+			header := lipgloss.JoinHorizontal(lipgloss.Top,
+				algoNameStyle.Render(m.sortingAlgo.Name),
+				"  ",
+				complexityStyle.Render("Time: "+m.sortingAlgo.TimeComplex),
+				"  ",
+				complexityStyle.Render("Space: "+m.sortingAlgo.SpaceComplex),
+			)
+			b.WriteString(header)
+		}
 		b.WriteString("\n")
-		b.WriteString(algoDescStyle.Render(m.sortingAlgo.Description))
+		b.WriteString(algoDescStyle.Width(m.textWrapWidth()).Render(m.sortingAlgo.Description))
 		b.WriteString("\n")
 	} else {
 		b.WriteString(algoNameStyle.Render(m.sortingAlgo.Name))
 		b.WriteString("\n")
 	}
 
-	// Visualization
 	vis := m.renderSortingBars(step)
-	b.WriteString(compactPanelStyle.Render(vis))
+	b.WriteString(m.panelForContent(vis))
 	b.WriteString("\n")
 
-	// Status with stats
 	moveLabel := m.sortingAlgo.MoveStatLabel
 	if moveLabel == "" {
 		moveLabel = "Swp"
 	}
 	progress := fmt.Sprintf("Step %d/%d", m.sortingStep+1, len(m.sortingAlgo.Steps))
-	statsLine := lipgloss.JoinHorizontal(lipgloss.Top,
-		statusStyle.Render(progress),
-		"  ",
-		speedStyle.Render(m.speed.String()),
-		"  ",
-		lipgloss.NewStyle().Foreground(neonCyan).Render(fmt.Sprintf("Cmp: %d", step.Comparisons)),
-		"  ",
-		lipgloss.NewStyle().Foreground(neonPink).Render(fmt.Sprintf("%s: %d", moveLabel, step.Swaps)),
-		"  ",
-		m.getPauseStatus(),
-	)
-	b.WriteString(statsLine)
+	b.WriteString(m.renderSortingStats(step, moveLabel, progress))
 
-	// Description (skip for small terminals)
-	if m.height >= 22 {
+	descShow := m.height >= 22
+	if m.narrowStats() && m.height >= 20 {
+		descShow = true
+	}
+	if descShow {
 		b.WriteString("\n")
-		b.WriteString(descriptionStyle.Render(step.Description))
+		b.WriteString(descriptionStyle.Width(m.textWrapWidth()).Render(step.Description))
 	}
 	b.WriteString("\n")
 
-	// Legend (only for larger terminals)
 	if m.height >= 25 {
-		legend := m.renderSortingLegend()
-		b.WriteString(legend)
+		b.WriteString(m.renderSortingLegend())
 		b.WriteString("\n")
 	}
 
-	controls := controlStyle.Render(
-		keyStyle.Render("1/2/3") + " Speed  " +
-			keyStyle.Render("p") + " Pause  " +
-			keyStyle.Render("h/l") + " Step  " +
-			keyStyle.Render("r") + " Reset  " +
-			keyStyle.Render("Esc") + " Back",
-	)
-	b.WriteString(controls)
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	b.WriteString(m.sortingControls())
+	return m.place(b.String())
 }
 
 func (m Model) renderSortingBars(step sorting.Step) string {
@@ -679,7 +824,14 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 	// Determine column width: 2 chars per column (consistent for alignment)
 	colWidth := 2
 
-	maxHeight := min(max(m.height-14, 6), 25)
+	chrome := 14
+	if m.narrowStats() {
+		chrome = 17
+	}
+	if m.height < 26 {
+		chrome++
+	}
+	maxHeight := min(max(m.height-chrome, 5), 25)
 	var lines []string
 
 	for h := maxHeight; h > 0; h-- {
@@ -728,85 +880,71 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 }
 
 func (m Model) renderSortingLegend() string {
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		barStyle.Render("█")+" Unsorted  ",
-		comparingBarStyle.Render("█")+" Comparing  ",
-		swappingBarStyle.Render("█")+" Swapping  ",
-		pivotBarStyle.Render("█")+" Pivot  ",
-		sortedBarStyle.Render("█")+" Sorted",
-	)
+	parts := []string{
+		barStyle.Render("█") + " Unsorted  ",
+		comparingBarStyle.Render("█") + " Comparing  ",
+		swappingBarStyle.Render("█") + " Swapping  ",
+		pivotBarStyle.Render("█") + " Pivot  ",
+		sortedBarStyle.Render("█") + " Sorted",
+	}
+	if m.width < 72 {
+		return lipgloss.JoinVertical(lipgloss.Left, parts...)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 }
 
 func (m Model) viewPathfindingVisualization() string {
 	if m.pathfindingAlgo == nil || len(m.pathfindingAlgo.Steps) == 0 {
-		return "Loading..."
+		return m.place(lipgloss.NewStyle().Foreground(dimText).Render("Loading..."))
 	}
 
 	step := m.pathfindingAlgo.Steps[m.pathfindingStep]
 	var b strings.Builder
 
-	// Header (compact for small terminals)
 	if m.height >= 25 {
-		header := lipgloss.JoinHorizontal(lipgloss.Top,
-			algoNameStyle.Render(m.pathfindingAlgo.Name),
-			"  ",
-			complexityStyle.Render("Time: "+m.pathfindingAlgo.TimeComplex),
-		)
-		b.WriteString(header)
+		if m.width < 72 {
+			b.WriteString(algoNameStyle.Render(m.pathfindingAlgo.Name))
+			b.WriteString("\n")
+			b.WriteString(complexityStyle.Render("Time: " + m.pathfindingAlgo.TimeComplex))
+		} else {
+			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				algoNameStyle.Render(m.pathfindingAlgo.Name),
+				"  ",
+				complexityStyle.Render("Time: "+m.pathfindingAlgo.TimeComplex),
+			))
+		}
 		b.WriteString("\n")
-		b.WriteString(algoDescStyle.Render(m.pathfindingAlgo.Description))
+		b.WriteString(algoDescStyle.Width(m.textWrapWidth()).Render(m.pathfindingAlgo.Description))
 		b.WriteString("\n")
 	} else {
 		b.WriteString(algoNameStyle.Render(m.pathfindingAlgo.Name))
 		b.WriteString("\n")
 	}
 
-	// Grid visualization
 	vis := m.renderPathfindingGrid(step)
-	b.WriteString(compactPanelStyle.Render(vis))
+	b.WriteString(m.panelForContent(vis))
 	b.WriteString("\n")
 
-	// Status with frontier count
 	progress := fmt.Sprintf("Step %d/%d", m.pathfindingStep+1, len(m.pathfindingAlgo.Steps))
-	visitedCount := len(step.Visited)
-	frontierCount := len(step.Frontier)
-	statusLine := lipgloss.JoinHorizontal(lipgloss.Top,
-		statusStyle.Render(progress),
-		"  ",
-		speedStyle.Render(m.speed.String()),
-		"  ",
-		lipgloss.NewStyle().Foreground(neonPurple).Render(fmt.Sprintf("Visited: %d", visitedCount)),
-		"  ",
-		lipgloss.NewStyle().Foreground(neonOrange).Render(fmt.Sprintf("Frontier: %d", frontierCount)),
-		"  ",
-		m.getPauseStatus(),
-	)
-	b.WriteString(statusLine)
+	b.WriteString(m.renderPathStats(progress, len(step.Visited), len(step.Frontier)))
 
-	// Description (skip for small terminals)
-	if m.height >= 22 {
+	descShow := m.height >= 22
+	if m.narrowStats() && m.height >= 20 {
+		descShow = true
+	}
+	if descShow {
 		b.WriteString("\n")
-		b.WriteString(descriptionStyle.Render(step.Description))
+		b.WriteString(descriptionStyle.Width(m.textWrapWidth()).Render(step.Description))
 	}
 	b.WriteString("\n")
 
-	// Legend (only for larger terminals)
 	if m.height >= 25 {
-		legend := m.renderPathfindingLegend()
-		b.WriteString(legend)
+		b.WriteString(m.renderPathfindingLegend())
 		b.WriteString("\n")
 	}
 
-	controls := controlStyle.Render(
-		keyStyle.Render("1/2/3") + " Speed  " +
-			keyStyle.Render("p") + " Pause  " +
-			keyStyle.Render("h/l") + " Step  " +
-			keyStyle.Render("r") + " New Maze  " +
-			keyStyle.Render("Esc") + " Back",
-	)
-	b.WriteString(controls)
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	b.WriteString(m.pathfindingControls())
+	return m.place(b.String())
 }
 
 func (m Model) renderPathfindingGrid(step pathfinding.Step) string {
@@ -863,15 +1001,19 @@ func (m Model) renderPathfindingGrid(step pathfinding.Step) string {
 }
 
 func (m Model) renderPathfindingLegend() string {
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		startStyle.Render("S")+" Start  ",
-		endStyle.Render("E")+" End  ",
-		wallStyle.Render("█")+" Wall  ",
-		frontierStyle.Render("◇")+" Frontier  ",
-		visitedStyle.Render("○")+" Visited  ",
-		currentStyle.Render("◆")+" Current  ",
-		pathStyle.Render("●")+" Path",
-	)
+	parts := []string{
+		startStyle.Render("S") + " Start  ",
+		endStyle.Render("E") + " End  ",
+		wallStyle.Render("█") + " Wall  ",
+		frontierStyle.Render("◇") + " Frontier  ",
+		visitedStyle.Render("○") + " Visited  ",
+		currentStyle.Render("◆") + " Current  ",
+		pathStyle.Render("●") + " Path",
+	}
+	if m.width < 72 {
+		return lipgloss.JoinVertical(lipgloss.Left, parts...)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 }
 
 func (m Model) getPauseStatus() string {

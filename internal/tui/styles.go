@@ -32,12 +32,11 @@ var (
 			Foreground(neonPink).
 			Bold(true)
 
-	// Menu styles
+	// Menu styles (set Width when rendering for responsive layout)
 	menuStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(neonPurple).
-			Padding(1, 2).
-			Width(50)
+			Padding(1, 2)
 
 	menuItemStyle = lipgloss.NewStyle().
 			Foreground(normalText).
