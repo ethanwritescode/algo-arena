@@ -29,6 +29,23 @@ func clampWindowSize(w, h int) (int, int) {
 	return w, h
 }
 
+// barDisplayHeight maps a value to a row count for the bar chart. Integer
+// truncation used to floor many small values to zero so columns looked empty
+// (worse when maxHeight is small or animation runs fast).
+func barDisplayHeight(val, maxVal, maxHeight int) int {
+	if maxVal <= 0 || maxHeight <= 0 || val <= 0 {
+		return 0
+	}
+	h := (val*maxHeight + maxVal - 1) / maxVal // ceil(val/maxVal * maxHeight)
+	if h < 1 {
+		h = 1
+	}
+	if h > maxHeight {
+		h = maxHeight
+	}
+	return h
+}
+
 // View states
 type viewState int
 
@@ -226,6 +243,13 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) place(content string) string {
 	w, h := clampWindowSize(m.width, m.height)
 	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, content)
+}
+
+// placeTop aligns content to the top so the chart grid is not clipped when
+// the block is taller than the terminal (vertical centering cut the middle).
+func (m Model) placeTop(content string) string {
+	w, h := clampWindowSize(m.width, m.height)
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Top, content)
 }
 
 // menuWidth caps the menu box for path labels; keeps margins on small terminals.
@@ -792,7 +816,7 @@ func (m Model) viewSortingVisualization() string {
 	}
 
 	b.WriteString(m.sortingControls())
-	return m.place(b.String())
+	return m.placeTop(b.String())
 }
 
 func (m Model) renderSortingBars(step sorting.Step) string {
@@ -805,6 +829,9 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 		if v > maxVal {
 			maxVal = v
 		}
+	}
+	if maxVal == 0 {
+		maxVal = 1
 	}
 
 	// Pre-compute state sets for O(1) lookups instead of linear scans
@@ -837,7 +864,7 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 	for h := maxHeight; h > 0; h-- {
 		var line strings.Builder
 		for i, val := range step.Array {
-			barHeight := int(float64(val) / float64(maxVal) * float64(maxHeight))
+			barHeight := barDisplayHeight(val, maxVal, maxHeight)
 
 			char := " "
 			if barHeight >= h {
@@ -944,7 +971,7 @@ func (m Model) viewPathfindingVisualization() string {
 	}
 
 	b.WriteString(m.pathfindingControls())
-	return m.place(b.String())
+	return m.placeTop(b.String())
 }
 
 func (m Model) renderPathfindingGrid(step pathfinding.Step) string {
