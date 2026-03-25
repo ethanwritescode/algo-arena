@@ -13,12 +13,9 @@ var (
 	neonPurple = lipgloss.Color("#BF5AF2")
 
 	// Neutral colors
-	darkBg     = lipgloss.Color("#0D0D0D")
 	mediumBg   = lipgloss.Color("#1A1A2E")
-	lightBg    = lipgloss.Color("#16213E")
 	dimText    = lipgloss.Color("#4A4A6A")
 	normalText = lipgloss.Color("#E4E4E7")
-	brightText = lipgloss.Color("#FFFFFF")
 )
 
 // Styles
@@ -115,21 +112,10 @@ var (
 			Bold(true)
 
 	// Panel styles
-	panelStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(neonPurple).
-			Padding(1, 2)
-
 	compactPanelStyle = lipgloss.NewStyle().
 				BorderStyle(lipgloss.RoundedBorder()).
 				BorderForeground(neonPurple).
 				Padding(0, 1)
-
-	infoPanelStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(neonCyan).
-			Padding(0, 2).
-			MarginTop(1)
 
 	// Control styles
 	controlStyle = lipgloss.NewStyle().

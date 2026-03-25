@@ -8,10 +8,10 @@ import (
 // Step represents a single step in the sorting visualization
 type Step struct {
 	Array       []int
-	Comparing   []int  // Indices being compared
-	Swapping    []int  // Indices being swapped
-	Sorted      []int  // Indices that are sorted
-	Pivot       int    // Pivot index for quicksort (-1 if none)
+	Comparing   []int // Indices being compared
+	Swapping    []int // Indices being swapped
+	Sorted      []int // Indices that are sorted
+	Pivot       int   // Pivot index for quicksort (-1 if none)
 	Description string
 	Comparisons int // Total comparisons so far
 	Swaps       int // Total swaps so far
@@ -382,6 +382,93 @@ func QuickSort(arr []int) *Algorithm {
 		Description: fmt.Sprintf("Sorted! %d comparisons, %d swaps", stats.comparisons, stats.swaps),
 		Comparisons: stats.comparisons,
 		Swaps:       stats.swaps,
+	})
+
+	return algo
+}
+
+// ShellSort generates steps for Shell sort visualization (Sedgewick / Knuth gap sequence).
+func ShellSort(arr []int) *Algorithm {
+	algo := &Algorithm{
+		Name:         "Shell Sort",
+		Description:  "Insertion sort on interleaved subsequences with shrinking gaps — much faster than plain insertion on larger inputs",
+		TimeComplex:  "O(n^1.3) typical",
+		SpaceComplex: "O(1)",
+		Steps:        []Step{},
+	}
+
+	data := copyArray(arr)
+	n := len(data)
+	comparisons, swaps := 0, 0
+
+	algo.Steps = append(algo.Steps, Step{
+		Array:       copyArray(data),
+		Pivot:       -1,
+		Description: fmt.Sprintf("Starting Shell Sort with %d elements", n),
+	})
+
+	gap := 1
+	for gap < n/3 {
+		gap = 3*gap + 1
+	}
+
+	for gap >= 1 {
+		algo.Steps = append(algo.Steps, Step{
+			Array:       copyArray(data),
+			Pivot:       -1,
+			Description: fmt.Sprintf("Sorting with gap %d", gap),
+			Comparisons: comparisons,
+			Swaps:       swaps,
+		})
+
+		for i := gap; i < n; i++ {
+			j := i
+			for j >= gap {
+				comparisons++
+				algo.Steps = append(algo.Steps, Step{
+					Array:       copyArray(data),
+					Comparing:   []int{j - gap, j},
+					Pivot:       i,
+					Description: fmt.Sprintf("Gap %d: compare %d vs %d", gap, data[j-gap], data[j]),
+					Comparisons: comparisons,
+					Swaps:       swaps,
+				})
+
+				if data[j-gap] > data[j] {
+					swaps++
+					data[j], data[j-gap] = data[j-gap], data[j]
+					algo.Steps = append(algo.Steps, Step{
+						Array:       copyArray(data),
+						Swapping:    []int{j - gap, j},
+						Pivot:       i,
+						Description: fmt.Sprintf("Swap across gap %d", gap),
+						Comparisons: comparisons,
+						Swaps:       swaps,
+					})
+					j -= gap
+				} else {
+					break
+				}
+			}
+		}
+
+		if gap == 1 {
+			break
+		}
+		gap /= 3
+	}
+
+	allSorted := make([]int, n)
+	for i := 0; i < n; i++ {
+		allSorted[i] = i
+	}
+	algo.Steps = append(algo.Steps, Step{
+		Array:       copyArray(data),
+		Sorted:      allSorted,
+		Pivot:       -1,
+		Description: fmt.Sprintf("Sorted! %d comparisons, %d swaps", comparisons, swaps),
+		Comparisons: comparisons,
+		Swaps:       swaps,
 	})
 
 	return algo

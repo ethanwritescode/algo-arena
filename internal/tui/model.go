@@ -47,13 +47,13 @@ func (s speedSetting) String() string {
 func (s speedSetting) Duration() time.Duration {
 	switch s {
 	case speedSlow:
-		return 300 * time.Millisecond
+		return 500 * time.Millisecond
 	case speedNormal:
-		return 100 * time.Millisecond
+		return 50 * time.Millisecond
 	case speedFast:
-		return 30 * time.Millisecond
+		return 5 * time.Millisecond
 	}
-	return 100 * time.Millisecond
+	return 50 * time.Millisecond
 }
 
 // Model is the main application model
@@ -88,6 +88,7 @@ var sortingMenuItems = []string{
 	"🫧 Bubble Sort",
 	"📌 Selection Sort",
 	"📥 Insertion Sort",
+	"🐚 Shell Sort",
 	"⚡ Quick Sort",
 	"🔀 Merge Sort",
 	"🏔️  Heap Sort",
@@ -267,10 +268,12 @@ func (m Model) startSortingVisualization() (tea.Model, tea.Cmd) {
 	case 2:
 		m.sortingAlgo = sorting.InsertionSort(m.sortingArray)
 	case 3:
-		m.sortingAlgo = sorting.QuickSort(m.sortingArray)
+		m.sortingAlgo = sorting.ShellSort(m.sortingArray)
 	case 4:
-		m.sortingAlgo = sorting.MergeSort(m.sortingArray)
+		m.sortingAlgo = sorting.QuickSort(m.sortingArray)
 	case 5:
+		m.sortingAlgo = sorting.MergeSort(m.sortingArray)
+	case 6:
 		m.sortingAlgo = sorting.HeapSort(m.sortingArray)
 	}
 
@@ -533,7 +536,7 @@ func (m Model) viewAbout() string {
 
 	b.WriteString(algoNameStyle.Render("Sorting Algorithms"))
 	b.WriteString("\n")
-	b.WriteString(content.Render("Bubble Sort, Selection Sort, Insertion Sort, Quick Sort, Merge Sort, and Heap Sort — with real-time comparisons and swap counts."))
+	b.WriteString(content.Render("Bubble, Selection, Insertion, Shell, Quick, Merge, and Heap sort — with real-time comparisons and swap counts."))
 	b.WriteString("\n\n")
 
 	b.WriteString(algoNameStyle.Render("Pathfinding Algorithms"))
@@ -770,7 +773,7 @@ func (m Model) viewPathfindingVisualization() string {
 		"  ",
 		lipgloss.NewStyle().Foreground(neonPurple).Render(fmt.Sprintf("Visited: %d", visitedCount)),
 		"  ",
-		lipgloss.NewStyle().Foreground(neonOrange).Render(fmt.Sprintf("Queue: %d", frontierCount)),
+		lipgloss.NewStyle().Foreground(neonOrange).Render(fmt.Sprintf("Frontier: %d", frontierCount)),
 		"  ",
 		m.getPauseStatus(),
 	)
@@ -884,4 +887,3 @@ func (m Model) getPauseStatus() string {
 	}
 	return lipgloss.NewStyle().Foreground(neonGreen).Render("▶ Running")
 }
-

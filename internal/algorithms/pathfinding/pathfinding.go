@@ -39,8 +39,15 @@ type Algorithm struct {
 	Steps       []Step
 }
 
-// NewGrid creates a new grid with a proper maze
+// NewGrid creates a new grid with a proper maze. wallDensity in [0,1] scales
+// how many extra passages are carved after generation (higher = fewer walls).
 func NewGrid(width, height int, wallDensity float64) *Grid {
+	if wallDensity < 0 {
+		wallDensity = 0
+	}
+	if wallDensity > 1 {
+		wallDensity = 1
+	}
 	g := &Grid{
 		Width:  width,
 		Height: height,
@@ -50,13 +57,13 @@ func NewGrid(width, height int, wallDensity float64) *Grid {
 	}
 
 	// Generate a proper maze using recursive backtracking
-	g.generateRecursiveBacktrackingMaze()
+	g.generateRecursiveBacktrackingMaze(wallDensity)
 
 	return g
 }
 
 // generateRecursiveBacktrackingMaze creates a proper maze with corridors
-func (g *Grid) generateRecursiveBacktrackingMaze() {
+func (g *Grid) generateRecursiveBacktrackingMaze(wallDensity float64) {
 	// Start with all walls
 	for row := 0; row < g.Height; row++ {
 		for col := 0; col < g.Width; col++ {
@@ -136,8 +143,12 @@ func (g *Grid) generateRecursiveBacktrackingMaze() {
 		}
 	}
 
-	// Add some random passages to create multiple path options
-	extraPassages := (g.Width * g.Height) / 20
+	// Add random passages so density is tunable (more openings when wallDensity is high)
+	base := (g.Width * g.Height) / 25
+	extraPassages := base + int(float64(g.Width*g.Height)*wallDensity*0.12)
+	if extraPassages < 0 {
+		extraPassages = 0
+	}
 	for i := 0; i < extraPassages; i++ {
 		row := rand.IntN(g.Height-4) + 2
 		col := rand.IntN(g.Width-4) + 2
@@ -425,6 +436,9 @@ func Dijkstra(grid *Grid) *Algorithm {
 		current := item.cell
 		currentDist := item.priority
 
+		if d, ok := dist[current]; !ok || currentDist > d {
+			continue
+		}
 		if visited[current] {
 			continue
 		}
@@ -527,7 +541,11 @@ func AStar(grid *Grid) *Algorithm {
 	for pq.Len() > 0 && !found {
 		item := heap.Pop(pq).(*pqItem)
 		current := item.cell
+		f := item.priority
 
+		if best, ok := fScore[current]; ok && f > best {
+			continue
+		}
 		if visited[current] {
 			continue
 		}

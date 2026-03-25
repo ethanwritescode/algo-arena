@@ -16,7 +16,7 @@ func main() {
 	)
 
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error running program: %v", err)
+		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
 	}
 }
