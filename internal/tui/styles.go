@@ -61,24 +61,43 @@ var (
 			Foreground(neonYellow).
 			Bold(true)
 
-	// Visualization styles
+	barFillBG    = lipgloss.Color("#071b24")
+	barCompareBG = lipgloss.Color("#241504")
+	barSwapBG    = lipgloss.Color("#240818")
+	barSortedBG  = lipgloss.Color("#071808")
+	barPivotBG   = lipgloss.Color("#242006")
+
+	// Visualization styles (wide bar glyphs + dim background in renderSortingBars)
 	barStyle = lipgloss.NewStyle().
-			Foreground(neonCyan)
+			Foreground(neonCyan).
+			Background(barFillBG)
 
 	comparingBarStyle = lipgloss.NewStyle().
 				Foreground(neonOrange).
+				Background(barCompareBG).
 				Bold(true)
 
 	swappingBarStyle = lipgloss.NewStyle().
 				Foreground(neonPink).
+				Background(barSwapBG).
 				Bold(true)
 
 	sortedBarStyle = lipgloss.NewStyle().
-			Foreground(neonGreen)
+			Foreground(neonGreen).
+			Background(barSortedBG)
 
 	pivotBarStyle = lipgloss.NewStyle().
 			Foreground(neonYellow).
+			Background(barPivotBG).
 			Bold(true)
+
+	barTrackStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#2f2f48"))
+	// Slightly lighter top row of each bar (▓▓) for a simple highlight
+	barTopCapStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#4fd4e8")).Background(barFillBG)
+	barTopCapCmp    = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffb347")).Background(barCompareBG).Bold(true)
+	barTopCapSwap   = lipgloss.NewStyle().Foreground(lipgloss.Color("#ff6fb1")).Background(barSwapBG).Bold(true)
+	barTopCapSorted = lipgloss.NewStyle().Foreground(lipgloss.Color("#7cff6a")).Background(barSortedBG)
+	barTopCapPivot  = lipgloss.NewStyle().Foreground(lipgloss.Color("#fff1a8")).Background(barPivotBG).Bold(true)
 
 	// Grid cell styles
 	wallStyle = lipgloss.NewStyle().

@@ -819,6 +819,27 @@ func (m Model) viewSortingVisualization() string {
 	return m.placeTop(b.String())
 }
 
+const (
+	barColFill  = "██"
+	barColEmpty = "░░"
+	barColCap   = "▓▓"
+)
+
+func barCellStyles(i int, step sorting.Step, swapSet, cmpSet, sortedSet map[int]bool) (body, top lipgloss.Style) {
+	switch {
+	case swapSet[i]:
+		return swappingBarStyle, barTopCapSwap
+	case cmpSet[i]:
+		return comparingBarStyle, barTopCapCmp
+	case step.Pivot == i:
+		return pivotBarStyle, barTopCapPivot
+	case sortedSet[i]:
+		return sortedBarStyle, barTopCapSorted
+	default:
+		return barStyle, barTopCapStyle
+	}
+}
+
 func (m Model) renderSortingBars(step sorting.Step) string {
 	if len(step.Array) == 0 {
 		return ""
@@ -834,7 +855,6 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 		maxVal = 1
 	}
 
-	// Pre-compute state sets for O(1) lookups instead of linear scans
 	swapSet := make(map[int]bool, len(step.Swapping))
 	for _, idx := range step.Swapping {
 		swapSet[idx] = true
@@ -848,9 +868,6 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 		sortedSet[idx] = true
 	}
 
-	// Determine column width: 2 chars per column (consistent for alignment)
-	colWidth := 2
-
 	chrome := 14
 	if m.narrowStats() {
 		chrome = 17
@@ -861,44 +878,53 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 	maxHeight := min(max(m.height-chrome, 5), 25)
 	var lines []string
 
+	lastIdx := len(step.Array) - 1
 	for h := maxHeight; h > 0; h-- {
 		var line strings.Builder
 		for i, val := range step.Array {
 			barHeight := barDisplayHeight(val, maxVal, maxHeight)
+			sep := " "
+			if i == lastIdx {
+				sep = ""
+			}
 
-			char := " "
 			if barHeight >= h {
-				char = "█"
-			}
-
-			style := barStyle
-			if swapSet[i] {
-				style = swappingBarStyle
-			} else if cmpSet[i] {
-				style = comparingBarStyle
-			} else if step.Pivot == i {
-				style = pivotBarStyle
-			} else if sortedSet[i] {
-				style = sortedBarStyle
-			}
-
-			line.WriteString(style.Render(char))
-			if colWidth > 1 {
-				line.WriteString(" ")
+				body, top := barCellStyles(i, step, swapSet, cmpSet, sortedSet)
+				glyph := barColFill
+				st := body
+				if barHeight > 1 && h == barHeight {
+					glyph = barColCap
+					st = top
+				}
+				line.WriteString(st.Render(glyph) + sep)
+			} else {
+				line.WriteString(barTrackStyle.Render(barColEmpty) + sep)
 			}
 		}
 		lines = append(lines, line.String())
 	}
 
+	if len(lines) > 0 && m.height >= 20 {
+		w := lipgloss.Width(lines[len(lines)-1])
+		if w > 0 {
+			lines = append(lines, lipgloss.NewStyle().Foreground(dimText).Render(strings.Repeat("─", w)))
+		}
+	}
+
 	if m.height >= 20 {
 		var valLine strings.Builder
 		for i, val := range step.Array {
-			style := barStyle
-			if sortedSet[i] {
-				style = sortedBarStyle
+			sep := " "
+			if i == lastIdx {
+				sep = ""
 			}
-			label := fmt.Sprintf("%-*d", colWidth, val)
-			valLine.WriteString(style.Render(label))
+			var lbl lipgloss.Style
+			if sortedSet[i] {
+				lbl = lipgloss.NewStyle().Foreground(neonGreen)
+			} else {
+				lbl = lipgloss.NewStyle().Foreground(neonCyan)
+			}
+			valLine.WriteString(lbl.Render(fmt.Sprintf("%2d", val)) + sep)
 		}
 		lines = append(lines, valLine.String())
 	}
@@ -908,11 +934,11 @@ func (m Model) renderSortingBars(step sorting.Step) string {
 
 func (m Model) renderSortingLegend() string {
 	parts := []string{
-		barStyle.Render("█") + " Unsorted  ",
-		comparingBarStyle.Render("█") + " Comparing  ",
-		swappingBarStyle.Render("█") + " Swapping  ",
-		pivotBarStyle.Render("█") + " Pivot  ",
-		sortedBarStyle.Render("█") + " Sorted",
+		barStyle.Render(barColFill) + " Unsorted  ",
+		comparingBarStyle.Render(barColFill) + " Comparing  ",
+		swappingBarStyle.Render(barColFill) + " Swapping  ",
+		pivotBarStyle.Render(barColFill) + " Pivot  ",
+		sortedBarStyle.Render(barColFill) + " Sorted",
 	}
 	if m.width < 72 {
 		return lipgloss.JoinVertical(lipgloss.Left, parts...)
