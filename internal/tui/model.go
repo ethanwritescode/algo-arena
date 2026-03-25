@@ -35,11 +35,11 @@ const (
 func (s speedSetting) String() string {
 	switch s {
 	case speedSlow:
-		return "🐢 Slow"
+		return "Slow"
 	case speedNormal:
-		return "🐇 Normal"
+		return "Normal"
 	case speedFast:
-		return "⚡ Fast"
+		return "Fast"
 	}
 	return "Normal"
 }
@@ -78,29 +78,29 @@ type Model struct {
 
 // Menu items
 var mainMenuItems = []string{
-	"🔢 Sorting Algorithms",
-	"🗺️  Pathfinding Algorithms",
-	"❓ About",
-	"🚪 Quit",
+	"Sorting Algorithms",
+	"Pathfinding Algorithms",
+	"About",
+	"Quit",
 }
 
 var sortingMenuItems = []string{
-	"🫧 Bubble Sort",
-	"📌 Selection Sort",
-	"📥 Insertion Sort",
-	"🐚 Shell Sort",
-	"⚡ Quick Sort",
-	"🔀 Merge Sort",
-	"🏔️  Heap Sort",
-	"← Back",
+	"Bubble Sort",
+	"Selection Sort",
+	"Insertion Sort",
+	"Shell Sort",
+	"Quick Sort",
+	"Merge Sort",
+	"Heap Sort",
+	"Back",
 }
 
 var pathfindingMenuItems = []string{
-	"🌊 Breadth-First Search (BFS)",
-	"🌲 Depth-First Search (DFS)",
-	"📍 Dijkstra's Algorithm",
-	"⭐ A* Search Algorithm",
-	"← Back",
+	"Breadth-First Search (BFS)",
+	"Depth-First Search (DFS)",
+	"Dijkstra's Algorithm",
+	"A* Search Algorithm",
+	"Back",
 }
 
 // NewModel creates a new model
@@ -442,7 +442,7 @@ func (m Model) viewMainMenu() string {
 
 	// Controls
 	controls := controlStyle.Render(
-		keyStyle.Render("↑/↓") + " Navigate  " +
+		keyStyle.Render("Up/Dn") + " Navigate  " +
 			keyStyle.Render("Enter") + " Select  " +
 			keyStyle.Render("q") + " Quit",
 	)
@@ -450,7 +450,7 @@ func (m Model) viewMainMenu() string {
 
 	// Footer (only for larger terminals)
 	if m.height >= 25 {
-		footer := footerStyle.Render("\n  Made with 💜 using Bubble Tea • github.com/ethanwritescode/algo-arena")
+		footer := footerStyle.Render("\n  Bubble Tea + Lipgloss · github.com/ethanwritescode/algo-arena")
 		b.WriteString(footer)
 	}
 
@@ -460,7 +460,7 @@ func (m Model) viewMainMenu() string {
 func (m Model) viewSortingMenu() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("🔢 SORTING ALGORITHMS"))
+	b.WriteString(titleStyle.Render("SORTING ALGORITHMS"))
 	b.WriteString("\n")
 
 	// Description (only for larger terminals)
@@ -481,7 +481,7 @@ func (m Model) viewSortingMenu() string {
 
 	// Controls
 	controls := controlStyle.Render(
-		keyStyle.Render("↑/↓") + " Navigate  " +
+		keyStyle.Render("Up/Dn") + " Navigate  " +
 			keyStyle.Render("Enter") + " Select  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -493,7 +493,7 @@ func (m Model) viewSortingMenu() string {
 func (m Model) viewPathfindingMenu() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("🗺️ PATHFINDING ALGORITHMS"))
+	b.WriteString(titleStyle.Render("PATHFINDING ALGORITHMS"))
 	b.WriteString("\n")
 
 	// Description (only for larger terminals)
@@ -514,7 +514,7 @@ func (m Model) viewPathfindingMenu() string {
 
 	// Controls
 	controls := controlStyle.Render(
-		keyStyle.Render("↑/↓") + " Navigate  " +
+		keyStyle.Render("Up/Dn") + " Navigate  " +
 			keyStyle.Render("Enter") + " Select  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -526,7 +526,7 @@ func (m Model) viewPathfindingMenu() string {
 func (m Model) viewAbout() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("❓ ABOUT ALGO ARENA"))
+	b.WriteString(titleStyle.Render("ABOUT ALGO ARENA"))
 	b.WriteString("\n\n")
 
 	content := lipgloss.NewStyle().Foreground(normalText).Width(56)
@@ -564,7 +564,7 @@ func (m Model) renderMenu(items []string) string {
 		cursor := "  "
 		style := menuItemStyle
 		if i == m.menuCursor {
-			cursor = "▸ "
+			cursor = "> "
 			style = selectedMenuItemStyle
 		}
 		b.WriteString(style.Render(cursor + item))
@@ -627,7 +627,7 @@ func (m Model) viewSortingVisualization() string {
 	// Description (skip for small terminals)
 	if m.height >= 22 {
 		b.WriteString("\n")
-		b.WriteString(descriptionStyle.Render("▸ " + step.Description))
+		b.WriteString(descriptionStyle.Render(step.Description))
 	}
 	b.WriteString("\n")
 
@@ -641,7 +641,7 @@ func (m Model) viewSortingVisualization() string {
 	controls := controlStyle.Render(
 		keyStyle.Render("1/2/3") + " Speed  " +
 			keyStyle.Render("p") + " Pause  " +
-			keyStyle.Render("←/→") + " Step  " +
+			keyStyle.Render("h/l") + " Step  " +
 			keyStyle.Render("r") + " Reset  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -786,7 +786,7 @@ func (m Model) viewPathfindingVisualization() string {
 	// Description (skip for small terminals)
 	if m.height >= 22 {
 		b.WriteString("\n")
-		b.WriteString(descriptionStyle.Render("▸ " + step.Description))
+		b.WriteString(descriptionStyle.Render(step.Description))
 	}
 	b.WriteString("\n")
 
@@ -800,7 +800,7 @@ func (m Model) viewPathfindingVisualization() string {
 	controls := controlStyle.Render(
 		keyStyle.Render("1/2/3") + " Speed  " +
 			keyStyle.Render("p") + " Pause  " +
-			keyStyle.Render("←/→") + " Step  " +
+			keyStyle.Render("h/l") + " Step  " +
 			keyStyle.Render("r") + " New Maze  " +
 			keyStyle.Render("Esc") + " Back",
 	)
@@ -884,10 +884,10 @@ func (m Model) getPauseStatus() string {
 	}
 
 	if isFinished {
-		return lipgloss.NewStyle().Foreground(neonCyan).Bold(true).Render("✓ Complete")
+		return lipgloss.NewStyle().Foreground(neonCyan).Bold(true).Render("Complete")
 	}
 	if m.paused {
-		return lipgloss.NewStyle().Foreground(neonOrange).Bold(true).Render("⏸ PAUSED")
+		return lipgloss.NewStyle().Foreground(neonOrange).Bold(true).Render("PAUSED")
 	}
-	return lipgloss.NewStyle().Foreground(neonGreen).Render("▶ Running")
+	return lipgloss.NewStyle().Foreground(neonGreen).Render("Running")
 }

@@ -703,7 +703,7 @@ func mergeWithStats(data []int, left, mid, right int, algo *Algorithm, stats *so
 		Array:       copyArray(data),
 		Sorted:      mergedRange,
 		Pivot:       -1,
-		Description: fmt.Sprintf("Merged [%d..%d] ✓", left, right),
+		Description: fmt.Sprintf("Merged [%d..%d]", left, right),
 		Comparisons: stats.comparisons,
 		Swaps:       stats.swaps,
 	})

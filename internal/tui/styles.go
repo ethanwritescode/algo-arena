@@ -158,5 +158,5 @@ const logo = `
 `
 
 const smallLogo = `╔═══════════════════════════════════════╗
-║  ⚡ ALGO ARENA - Algorithm Visualizer ║
+║     ALGO ARENA - Algorithm Visualizer ║
 ╚═══════════════════════════════════════╝`
